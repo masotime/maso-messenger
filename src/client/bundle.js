@@ -2,7 +2,7 @@
 import React from 'react';
 import { render } from 'react-dom';
 import App from 'components';
-import { SHARED_STATE_NAME } from 'common/constants';
+import { SHARED_STATE_NAME } from 'constants/common';
 
 const model = window[SHARED_STATE_NAME];
 

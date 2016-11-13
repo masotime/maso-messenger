@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 
-const { string, func } = PropTypes;
+const { string, func, bool } = PropTypes;
 
 export default class TextBox extends Component {
 
@@ -17,28 +17,45 @@ export default class TextBox extends Component {
 		}
 	}
 
+	focus() {
+		this.textbox.focus();
+	}
+
+	renderInput = props => this.props.textarea ? <textarea {...props} /> : <input type="text" {...props} />;
+
 	render() {
 		const { props, state } = this;
+		const inputProps = {
+			name: props.name,
+			placeholder: props.placeholder || props.label,
+			value: state.value,
+			onChange: props.onChange,
+			onKeyUp: props.onKeyUp,
+			ref: ref => this.textbox = ref
+		};
 
 		return (
 			<div className="textbox">
 				<label>{props.label}</label>
-				<input 
-					type="text"
-					name={props.name}
-					placeholder={props.placeholder || props.label}
-					value={state.value}
-					onChange={props.onChange}
-				/>
+				{ this.renderInput(inputProps) }
 			</div>
 		);
 	}
 }
+
+TextBox.defaultProps = {
+	ref: () => {},
+	onChange: () => {},
+	onKeyUp: () => {},
+	textarea: false
+};
 
 TextBox.propTypes = {
 	value: string,
 	label: string,
 	placeholder: string,
 	name: string,
-	onChange: func
-}
+	onChange: func,
+	onKeyUp: func,
+	textarea: bool
+};

@@ -5,7 +5,7 @@ import webpack from 'webpack';
 import { Router } from 'express';
 import MemoryFs from 'memory-fs';
 
-import { BUNDLE_PATHNAME, BUNDLE_SOURCE } from 'common/constants';
+import { BUNDLE_PATHNAME, BUNDLE_SOURCE } from 'constants/common';
 
 let error;
 const fs = new MemoryFs();

@@ -1,5 +1,5 @@
 import express from 'express';
-import { PORT } from 'common/constants';
+import { PORT, STATIC_SOURCE } from 'constants/common';
 
 // bundling of bundle.js
 import bundler from 'server/bundler';
@@ -11,7 +11,7 @@ import App from 'components';
 
 // websocket stuff
 import socketify from 'express-ws';
-import { getMessages, addMessage } from 'server/database';
+import Database from 'server/database';
 import { safeParse, max, extract } from 'common/util';
 
 const app = express();
@@ -23,9 +23,11 @@ function broadcast(msg) {
 }
 
 app.use(bundler());
+app.use('/static', express.static(STATIC_SOURCE));
 
-app.ws('/messages', ws => ws.on('message', msgStr => {
+app.ws('/messages', ws => ws.on('message', async msgStr => {
 	const msg = safeParse(msgStr);
+	const db = await Database();
 
 	// in all cases, we send back an update of messages
 	// received so far to all clients
@@ -33,7 +35,7 @@ app.ws('/messages', ws => ws.on('message', msgStr => {
 		case 'SEND': {
 			const { user, message } = msg;
 			if (user && message) {
-				addMessage(user, message);
+				db.addMessage(user, message);
 			}
 
 			// ping all clients to get an update
@@ -44,7 +46,7 @@ app.ws('/messages', ws => ws.on('message', msgStr => {
 
 		case 'RECEIVE': {
 			const { top } = msg;
-			const messagesToSend = getMessages(top);
+			const messagesToSend = db.getMessages(top);
 			const message = {
 				type: 'MESSAGES_UPDATE',
 				messages: messagesToSend
@@ -58,11 +60,12 @@ app.ws('/messages', ws => ws.on('message', msgStr => {
 
 }));
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+	const db = await Database();
 	const model = {
-		title: 'Simple Messenger',
+		title: '💬 maso-messenger',
 		message: 'Chat in the box below',
-		messages: getMessages()
+		messages: db.getMessages()
 	};
 
 	model.top = max(extract(model.messages, 'id')) + 1;

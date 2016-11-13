@@ -53,7 +53,10 @@ export default function MessagingClient(websocket, initialState = {}) {
 		switch (msg.type) {
 			case WSServer.MESSAGES_UPDATE: {
 				const { messages: newMessages } = msg;
-				state.top = max(extract(newMessages, 'id')) + 1;
+
+				if (newMessages.length !== 0) {
+					state.top = max(extract(newMessages, 'id')) + 1;	
+				}
 				state.messages = state.messages.concat(newMessages);
 				callSubscribers();
 				break;
