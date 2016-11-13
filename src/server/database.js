@@ -2,7 +2,7 @@
 import { safeInt } from 'common/util';
 
 const messages = {};
-let bottom = 0;
+const bottom = 0;
 let top = 0;
 
 export function getMessages(from = bottom, to = top) {
@@ -11,7 +11,7 @@ export function getMessages(from = bottom, to = top) {
 
 	return Object.keys(messages)
 		.map(id => safeInt(id))
-		.filter(id => id > from && id <= to)
+		.filter(id => id >= from && id < to)
 		.map(id => ({ ...messages[id] }));
 }
 

@@ -2,17 +2,16 @@
 import React, { Component, PropTypes } from 'react';
 import MessageBox from 'components/elements/MessageBox';
 import TextBox from 'components/elements/TextBox';
-import { max, extract, safeParse } from 'common/util';
+import MessagingClient from 'client/websocket';
 
-const { arrayOf, object } = PropTypes;
+const { arrayOf, object, number } = PropTypes;
 
 export default class SplashPage extends Component {
 
 	constructor(props) {
 		super(props);
 
-		const { messages } = props;
-		const top = max(extract(messages, 'id')) || -1;
+		const { messages, top } = props;
 
 		this.state = {
 			message: '',
@@ -30,28 +29,11 @@ export default class SplashPage extends Component {
 
 		// configure websocket connection
 		const websocket = new WebSocket(`ws://${host}/messages`);
-		websocket.onmessage = ({ data }) => {
-			const msg = safeParse(data);
-
-			switch (msg.type) {
-				case 'MESSAGES_UPDATE': {
-					const { messages } = msg;
-					const top = max(extract(messages, 'id'));
-					this.setState({
-						messages: this.state.messages.concat(messages),
-						top
-					});
-					break;
-				}
-
-				case 'UPDATES_AVAILABLE': {
-					this.receiveMessages();
-					break;
-				}
-			}
-		}
-
-		this.connection = websocket;
+		this.msgClient = MessagingClient(websocket, {
+			top: this.state.top,
+			messages: this.state.messages
+		});
+		this.msgClient.subscribe(({ top, messages }) => this.setState({ top, messages }));
 	}
 
 	onUsername = e => {
@@ -63,23 +45,9 @@ export default class SplashPage extends Component {
 		this.setState({ message: e.target.value });
 	}
 
-	receiveMessages = () => {
-		const message = {
-			type: 'RECEIVE',
-			id: this.state.top
-		};
-
-		this.connection.send(JSON.stringify(message));
-	}
-
 	sendMessage = () => {
-		const message = {
-			type: 'SEND',
-			user: this.state.username,
-			message: this.state.message
-		}
-
-		this.connection.send(JSON.stringify(message));
+		const { username, message } = this.state;
+		this.msgClient.send(username, message);
 	}
 
 	render() {
@@ -98,5 +66,6 @@ export default class SplashPage extends Component {
 }
 
 SplashPage.propTypes = {
-	messages: arrayOf(object)
+	messages: arrayOf(object),
+	top: number
 };

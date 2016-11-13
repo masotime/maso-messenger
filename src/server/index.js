@@ -12,7 +12,7 @@ import App from 'components';
 // websocket stuff
 import socketify from 'express-ws';
 import { getMessages, addMessage } from 'server/database';
-import { safeParse } from 'common/util';
+import { safeParse, max, extract } from 'common/util';
 
 const app = express();
 const wsInstance = socketify(app);
@@ -43,8 +43,8 @@ app.ws('/messages', ws => ws.on('message', msgStr => {
 		}
 
 		case 'RECEIVE': {
-			const { id } = msg;
-			const messagesToSend = getMessages(id);
+			const { top } = msg;
+			const messagesToSend = getMessages(top);
 			const message = {
 				type: 'MESSAGES_UPDATE',
 				messages: messagesToSend
@@ -64,6 +64,8 @@ app.get('/', (req, res) => {
 		message: 'Chat in the box below',
 		messages: getMessages()
 	};
+
+	model.top = max(extract(model.messages, 'id')) + 1;
 
 	res.status(200).end(`<!DOCTYPE HTML>${renderToString(<App model={model} />)}`);
 });
