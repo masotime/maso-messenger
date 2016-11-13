@@ -11,7 +11,7 @@ export function getMessages(from = bottom, to = top) {
 
 	return Object.keys(messages)
 		.map(id => safeInt(id))
-		.filter(id => id >= from && id < to)
+		.filter(id => id > from && id <= to)
 		.map(id => ({ ...messages[id] }));
 }
 

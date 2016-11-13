@@ -20,7 +20,6 @@ export default class MessageBox extends Component {
 
 	render() {
 		const { messages } = this.props;
-		console.log(JSON.stringify(messages, null, 4));
 
 		return (
 			<div className="message-box">

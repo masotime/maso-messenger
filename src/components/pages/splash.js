@@ -2,6 +2,7 @@
 import React, { Component, PropTypes } from 'react';
 import MessageBox from 'components/elements/MessageBox';
 import TextBox from 'components/elements/TextBox';
+import { max, extract, safeParse } from 'common/util';
 
 const { arrayOf, object } = PropTypes;
 
@@ -10,9 +11,13 @@ export default class SplashPage extends Component {
 	constructor(props) {
 		super(props);
 
+		const { messages } = props;
+		const top = max(extract(messages, 'id')) || -1;
+
 		this.state = {
-			messages: props.messages,
-			message: ''
+			message: '',
+			messages,
+			top
 		};
 	}
 
@@ -22,7 +27,31 @@ export default class SplashPage extends Component {
 		const localName = localStorage.getItem('username');
 
 		this.setState({ username: localName || 'new-user' });
-		this.connection = new WebSocket(`ws://${host}/sendMessage`);
+
+		// configure websocket connection
+		const websocket = new WebSocket(`ws://${host}/messages`);
+		websocket.onmessage = ({ data }) => {
+			const msg = safeParse(data);
+
+			switch (msg.type) {
+				case 'MESSAGES_UPDATE': {
+					const { messages } = msg;
+					const top = max(extract(messages, 'id'));
+					this.setState({
+						messages: this.state.messages.concat(messages),
+						top
+					});
+					break;
+				}
+
+				case 'UPDATES_AVAILABLE': {
+					this.receiveMessages();
+					break;
+				}
+			}
+		}
+
+		this.connection = websocket;
 	}
 
 	onUsername = e => {
@@ -34,13 +63,22 @@ export default class SplashPage extends Component {
 		this.setState({ message: e.target.value });
 	}
 
+	receiveMessages = () => {
+		const message = {
+			type: 'RECEIVE',
+			id: this.state.top
+		};
+
+		this.connection.send(JSON.stringify(message));
+	}
+
 	sendMessage = () => {
 		const message = {
+			type: 'SEND',
 			user: this.state.username,
 			message: this.state.message
 		}
 
-		console.log(message);
 		this.connection.send(JSON.stringify(message));
 	}
 

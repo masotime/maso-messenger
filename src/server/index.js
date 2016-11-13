@@ -15,26 +15,47 @@ import { getMessages, addMessage } from 'server/database';
 import { safeParse } from 'common/util';
 
 const app = express();
-socketify(app);
+const wsInstance = socketify(app);
+const wss = wsInstance.getWss();
+
+function broadcast(msg) {
+	wss.clients.forEach(client => client.send(JSON.stringify(msg)));
+}
 
 app.use(bundler());
 
-// expected format:
-// {
-//	  user: string
-//	  message: string
-// }
-app.ws('/sendMessage', ws => ws.on('message', msg => {
-	const { user, message } = safeParse(msg);
-	if (user && message) addMessage(user, message);
-}));
+app.ws('/messages', ws => ws.on('message', msgStr => {
+	const msg = safeParse(msgStr);
 
-// expected format:
-// { from, to }
-app.ws('/getMessages', ws => ws.on('message', msg => {
-	const { from, to } = msg;
-	const messages = getMessages(from, to);
-	ws.send(JSON.stringify(messages));
+	// in all cases, we send back an update of messages
+	// received so far to all clients
+	switch (msg.type) {
+		case 'SEND': {
+			const { user, message } = msg;
+			if (user && message) {
+				addMessage(user, message);
+			}
+
+			// ping all clients to get an update
+			const reply = { type: 'UPDATES_AVAILABLE' };
+			broadcast(reply);
+			break;
+		}
+
+		case 'RECEIVE': {
+			const { id } = msg;
+			const messagesToSend = getMessages(id);
+			const message = {
+				type: 'MESSAGES_UPDATE',
+				messages: messagesToSend
+			};
+
+			// send a single client the messages to update to
+			ws.send(JSON.stringify(message));
+			break;			
+		}
+	}
+
 }));
 
 app.get('/', (req, res) => {
