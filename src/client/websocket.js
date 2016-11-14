@@ -1,5 +1,6 @@
+/* global window */
 // it seems I am recreating redux
-import { safeParse, max, extract } from 'common/util';
+import { safeParse, max, extract, sleep } from 'common/util';
 import * as WSServer from 'constants/websocket/server';
 import * as WSClient from 'constants/websocket/client';
 
@@ -27,12 +28,14 @@ function MessagingCommands(websocket) {
 }
 
 const defaultState = { top: 0, messages: [] };
+const RETRY_DELAY = 2000;
 
 export default function MessagingClient(websocket, initialState = {}) {
 	// maintain some internal state
 	const subscribers = [];
 	const state = { ...defaultState, ...initialState };
-	const commands = MessagingCommands(websocket);
+	const { url } = websocket;
+	let commands;
 
 	function subscribe(subscription) {
 		subscribers.push(subscription);
@@ -47,30 +50,65 @@ export default function MessagingClient(websocket, initialState = {}) {
 		websocket.close();
 	}
 
-	websocket.onmessage = ({ data }) => {
-		const msg = safeParse(data);
+	function init(websocket, forceLoad = false) {
 
-		switch (msg.type) {
-			case WSServer.MESSAGES_UPDATE: {
-				const { messages: newMessages } = msg;
+		let closed = false;
 
-				if (newMessages.length !== 0) {
-					state.top = max(extract(newMessages, 'id')) + 1;	
-				}
-				state.messages = state.messages.concat(newMessages);
-				callSubscribers();
-				break;
-			}
+		websocket.onopen = () => {
+			if (closed) return;
 
-			case WSServer.UPDATES_AVAILABLE: {
+			console.log(`✅ Websocket connection established`);
+			commands = MessagingCommands(websocket, true);
+
+			if (forceLoad) { // used when reconnecting
 				commands.receive(state.top);
-				break;
 			}
 		}
+
+		websocket.onmessage = ({ data }) => {
+			if (closed) return;
+
+			const msg = safeParse(data);
+
+			switch (msg.type) {
+				case WSServer.MESSAGES_UPDATE: {
+					const { messages: newMessages } = msg;
+
+					if (newMessages.length !== 0) {
+						state.top = max(extract(newMessages, 'id')) + 1;	
+					}
+					state.messages = state.messages.concat(newMessages);
+					callSubscribers();
+					break;
+				}
+
+				case WSServer.UPDATES_AVAILABLE: {
+					commands.receive(state.top);
+					break;
+				}
+			}
+		}
+
+		websocket.onclose = () => {
+			if (closed) return;
+
+			closed = true;
+			if (typeof window !== 'undefined') {
+				return sleep(RETRY_DELAY).then(() => {
+					console.log(`🔗 Attempting to reconnect websocket instance...`);
+					websocket = new window.WebSocket(url);
+					init(websocket); // notice the recursion
+				});
+			}
+		}
+
+		return MessagingCommands(websocket);
 	}
 
+	init(websocket);
+
 	return {
-		send: commands.send,
+		send: (...args) => commands.send(...args), // commands is mutable
 		subscribe,
 		close
 	}

@@ -49,9 +49,7 @@ export default class SplashPage extends Component {
 	sendMessage = () => {
 		const { username, message } = this.state;
 		this.msgClient.send(username, message);
-		this.setState({
-			message: ''
-		});
+		this.setState({ message: '' });
 		this.msgBox.focus();
 	}
 

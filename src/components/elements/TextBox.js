@@ -17,7 +17,7 @@ export default class TextBox extends Component {
 		}
 	}
 
-	focus() {
+	focus = () => {
 		this.textbox.focus();
 	}
 

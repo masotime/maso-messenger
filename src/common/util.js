@@ -34,3 +34,5 @@ export function memoize(fn) {
 		return memory[key];
 	}
 }
+
+export const sleep = duration => new Promise(ok => setTimeout(ok, duration));
