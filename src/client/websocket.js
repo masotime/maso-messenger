@@ -1,4 +1,4 @@
-/* global window */
+/* global window, document */
 // it seems I am recreating redux
 import { safeParse, max, extract, sleep } from 'common/util';
 import * as WSServer from 'constants/websocket/server';
@@ -37,6 +37,10 @@ export default function MessagingClient(websocket, initialState = {}) {
 	const { url } = websocket;
 	let commands;
 
+	function visibilityCheck() {
+		if (document.visibilityState === 'visible') commands.receive(state.top);
+	}
+
 	function subscribe(subscription) {
 		subscribers.push(subscription);
 		subscription(state); // initial push to subscriber
@@ -48,6 +52,9 @@ export default function MessagingClient(websocket, initialState = {}) {
 
 	function close() {
 		websocket.close();
+		if (typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', visibilityCheck);
+		}
 	}
 
 	function init(websocket, forceLoad = false) {
@@ -106,6 +113,11 @@ export default function MessagingClient(websocket, initialState = {}) {
 	}
 
 	init(websocket);
+
+	// for mobile devices, force refresh when the page becomes visible
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', visibilityCheck);
+	}
 
 	return {
 		send: (...args) => commands.send(...args), // commands is mutable

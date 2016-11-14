@@ -37,6 +37,10 @@ export default class SplashPage extends Component {
 		this.msgClient.subscribe(({ top, messages }) => this.setState({ top, messages }));
 	}
 
+	componentWillUnmount() {
+		this.msgClient && this.msgClient.close();
+	}
+
 	onUsername = e => {
 		this.setState({ username: e.target.value });
 		window.localStorage.setItem('username', e.target.value);
